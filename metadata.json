@@ -1,0 +1,6 @@
+{
+  "name": "Lead & Sales Analytics Dashboard",
+  "description": "แดชบอร์ดสรุปยอดขายและรายงานวิเคราะห์ความสัมพันธ์ข้อมูล Lead จากไฟล์ Main, Status, Sales แบบเรียลไทม์ พร้อมการจัดกลุ่ม Ads และส่งออกข้อมูล",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
