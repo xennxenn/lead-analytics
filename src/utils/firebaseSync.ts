@@ -4,6 +4,7 @@ import {
   doc,
   setDoc,
   getDoc,
+  deleteDoc,
   onSnapshot,
   getDocFromServer,
 } from 'firebase/firestore';
@@ -102,11 +103,56 @@ export async function saveDataToCloud(data: CloudPayload): Promise<boolean> {
       statusChunks,
       mainChunks,
       salesChunks,
+      isCleared: false,
+      hasInitialized: true,
     });
 
     return true;
   } catch (err) {
     console.error('Save to Cloud Firestore error:', err);
+    return false;
+  }
+}
+
+/**
+ * Completely clear all data rows from Cloud Firestore so all users see 0 records.
+ */
+export async function clearDataInCloud(): Promise<boolean> {
+  try {
+    const appStateSnap = await getDoc(doc(db, 'app_state', 'global'));
+    if (appStateSnap.exists()) {
+      const appState = appStateSnap.data();
+      const statusChunksCount = appState.statusChunks || 0;
+      const mainChunksCount = appState.mainChunks || 0;
+      const salesChunksCount = appState.salesChunks || 0;
+
+      for (let c = 0; c < statusChunksCount; c++) {
+        deleteDoc(doc(db, 'data_chunks', `status_chunk_${c}`)).catch(() => {});
+      }
+      for (let c = 0; c < mainChunksCount; c++) {
+        deleteDoc(doc(db, 'data_chunks', `main_chunk_${c}`)).catch(() => {});
+      }
+      for (let c = 0; c < salesChunksCount; c++) {
+        deleteDoc(doc(db, 'data_chunks', `sales_chunk_${c}`)).catch(() => {});
+      }
+    }
+
+    // Mark Firestore global app_state as completely cleared
+    await setDoc(doc(db, 'app_state', 'global'), {
+      lastUpdated: new Date().toISOString(),
+      mainCount: 0,
+      statusCount: 0,
+      salesCount: 0,
+      statusChunks: 0,
+      mainChunks: 0,
+      salesChunks: 0,
+      isCleared: true,
+      hasInitialized: true,
+    });
+
+    return true;
+  } catch (err) {
+    console.error('Clear Data in Cloud Firestore error:', err);
     return false;
   }
 }
@@ -195,6 +241,20 @@ export async function loadDataFromCloud(): Promise<CloudPayload | null> {
       adsSnap.exists() && Array.isArray(adsSnap.data()?.groups)
         ? adsSnap.data().groups
         : [];
+
+    // If marked as cleared or 0 records, return empty state immediately
+    if (
+      appState.isCleared === true ||
+      (appState.mainCount === 0 && appState.statusCount === 0 && appState.salesCount === 0)
+    ) {
+      return {
+        mainRows: [],
+        statusRows: [],
+        salesRows: [],
+        adsGroups,
+        lastUpdated: appState.lastUpdated || new Date().toISOString(),
+      };
+    }
 
     // Load Chunks
     const statusChunksCount = appState.statusChunks || 0;

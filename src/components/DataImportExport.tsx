@@ -32,7 +32,6 @@ interface DataImportExportProps {
     sales: RawSalesRow[] | null
   ) => Promise<void>;
   onClearData: () => Promise<void>;
-  onLoadDemoData?: () => Promise<void>;
   isSyncing: boolean;
   fileStats: {
     mainCount: number;
@@ -52,7 +51,6 @@ interface FileMetaInfo {
 export const DataImportExport: React.FC<DataImportExportProps> = ({
   onUploadAndSync,
   onClearData,
-  onLoadDemoData,
   isSyncing,
   fileStats,
   lastUpdated,
@@ -345,16 +343,6 @@ export const DataImportExport: React.FC<DataImportExportProps> = ({
 
         {/* Action buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            id="btn-load-demo-data"
-            onClick={onLoadDemoData}
-            disabled={isSyncing}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer disabled:opacity-50"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-            <span>โหลดชุดข้อมูลตัวอย่าง</span>
-          </button>
-
           {/* Direct Clear All Button (Opens clean confirmation modal) */}
           <button
             id="btn-clear-all-data"

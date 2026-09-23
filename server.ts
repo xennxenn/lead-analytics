@@ -68,25 +68,16 @@ function saveStoredData(data: StoredData) {
   // Always update in-memory
   currentStore = data;
 
-  // If running in Vercel or read-only serverless, write to /tmp
-  if (process.env.VERCEL) {
-    try {
-      fs.writeFileSync(TMP_STORE_FILE, JSON.stringify(data, null, 2), 'utf-8');
-      return;
-    } catch (err) {
-      console.warn('Failed to write to /tmp store:', err);
-    }
-  }
-
   try {
     fs.writeFileSync(STORE_FILE, JSON.stringify(data, null, 2), 'utf-8');
   } catch (err) {
-    // Fallback to /tmp if primary directory is not writable
-    try {
-      fs.writeFileSync(TMP_STORE_FILE, JSON.stringify(data, null, 2), 'utf-8');
-    } catch (tmpErr) {
-      console.warn('Serverless storage fallback: kept in-memory state');
-    }
+    console.warn('Failed to write to local store:', err);
+  }
+
+  try {
+    fs.writeFileSync(TMP_STORE_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (err) {
+    // Ignored in non-serverless
   }
 }
 

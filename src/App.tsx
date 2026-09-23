@@ -22,13 +22,14 @@ import {
   exportToExcel,
   exportToCSV,
 } from './utils/parser';
-import { generateDemoRawData, INITIAL_ADS_GROUPS } from './utils/demoData';
+import { INITIAL_ADS_GROUPS } from './utils/demoData';
 import {
   loadAdsGroupsFromStorage,
   saveAdsGroupsToStorage,
 } from './utils/adsGroupStorage';
 import {
   saveDataToCloud,
+  clearDataInCloud,
   saveAdsGroupsToCloud,
   updateLeadCustomerNameInCloud,
   loadDataFromCloud,
@@ -72,12 +73,7 @@ export default function App() {
       // 1. Try Firebase Cloud Firestore first
       const cloudData = await loadDataFromCloud().catch(() => null);
 
-      if (
-        cloudData &&
-        (cloudData.mainRows?.length > 0 ||
-          cloudData.statusRows?.length > 0 ||
-          cloudData.salesRows?.length > 0)
-      ) {
+      if (cloudData) {
         setMainRows(cloudData.mainRows || []);
         setStatusRows(cloudData.statusRows || []);
         setSalesRows(cloudData.salesRows || []);
@@ -89,7 +85,7 @@ export default function App() {
         return;
       }
 
-      // 2. If Cloud Firestore is empty, fetch from /api/data
+      // 2. If Cloud Firestore is not reachable, fetch from /api/data
       const res = await fetch('/api/data');
       if (res.ok) {
         const json = await res.json();
@@ -97,6 +93,7 @@ export default function App() {
 
         if (
           data &&
+          !data.isCleared &&
           (data.mainRows?.length > 0 ||
             data.statusRows?.length > 0 ||
             data.salesRows?.length > 0)
@@ -112,15 +109,6 @@ export default function App() {
           setAdsGroups(finalAdsGroups);
           saveAdsGroupsToStorage(finalAdsGroups);
           setLastUpdated(data.lastUpdated);
-
-          // Seed directly into Cloud Firestore so all other devices and users can see it immediately
-          saveDataToCloud({
-            mainRows: data.mainRows || [],
-            statusRows: data.statusRows || [],
-            salesRows: data.salesRows || [],
-            adsGroups: finalAdsGroups,
-            lastUpdated: data.lastUpdated || new Date().toISOString(),
-          }).catch(() => {});
         } else {
           setMainRows([]);
           setStatusRows([]);
@@ -364,33 +352,24 @@ export default function App() {
     setIsSyncing(true);
     try {
       const nowIso = new Date().toISOString();
-      await saveDataToCloud({
-        mainRows: [],
-        statusRows: [],
-        salesRows: [],
-        adsGroups,
-        lastUpdated: nowIso,
-      }).catch(() => {});
 
-      const res = await fetch('/api/clear', { method: 'POST' });
-      if (res.ok) {
-        setMainRows([]);
-        setStatusRows([]);
-        setSalesRows([]);
-        setLastUpdated(nowIso);
-        setActiveTab('import'); // Bring user directly to the upload dropzones!
-      }
+      // 1. Clear server-side database store file first
+      await fetch('/api/clear', { method: 'POST' }).catch(() => {});
+
+      // 2. Clear Cloud Firestore
+      await clearDataInCloud().catch(() => {});
+
+      // 3. Clear component state
+      setMainRows([]);
+      setStatusRows([]);
+      setSalesRows([]);
+      setLastUpdated(nowIso);
+      setActiveTab('import'); // Bring user directly to the upload dropzones!
     } catch (err) {
       console.error('Clear data error:', err);
     } finally {
       setIsSyncing(false);
     }
-  };
-
-  const handleLoadDemoData = async () => {
-    const demo = generateDemoRawData();
-    await handleUploadAndSync(demo.main, demo.status, demo.sales);
-    setAdsGroups(demo.adsGroups);
   };
 
   const handleExportExcel = () => {
