@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    // Ads Groups: readable (get and list) and writable
+    match /ads_groups/{groupId} {
+      allow get, list: if true;
+      allow write: if isValidId(groupId);
+    }
+
+    // Application state metadata
+    match /app_state/{stateId} {
+      allow get, list: if true;
+      allow write: if isValidId(stateId);
+    }
+
+    // Data chunks for lead records and sales
+    match /data_chunks/{chunkId} {
+      allow get, list: if true;
+      allow write: if isValidId(chunkId);
+    }
+
+    // Lead individual updates
+    match /leads/{leadId} {
+      allow get, list: if true;
+      allow write: if isValidId(leadId);
+    }
+
+    // Default deny any other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

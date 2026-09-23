@@ -1,0 +1,55 @@
+{
+  "entities": {
+    "AdsGroup": {
+      "title": "Ads Group",
+      "description": "Group configuration for categorizing ads campaigns",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "color": { "type": "string" },
+        "assignedAds": { "type": "array" },
+        "keywords": { "type": "array" }
+      },
+      "required": ["id", "name", "color"]
+    },
+    "AppState": {
+      "title": "App State",
+      "description": "System state metadata and synchronization timestamp",
+      "type": "object",
+      "properties": {
+        "lastUpdated": { "type": "string" },
+        "mainCount": { "type": "number" },
+        "statusCount": { "type": "number" },
+        "salesCount": { "type": "number" },
+        "chunkCount": { "type": "number" }
+      },
+      "required": ["lastUpdated"]
+    },
+    "DataChunk": {
+      "title": "Data Chunk",
+      "description": "Chunked lead datasets for scalable cloud storage",
+      "type": "object",
+      "properties": {
+        "chunkIndex": { "type": "number" },
+        "type": { "type": "string" },
+        "rows": { "type": "array" }
+      },
+      "required": ["chunkIndex", "type", "rows"]
+    }
+  },
+  "firestore": {
+    "/ads_groups/{groupId}": {
+      "schema": "AdsGroup",
+      "description": "Ads groups configured by the team"
+    },
+    "/app_state/{stateId}": {
+      "schema": "AppState",
+      "description": "Global application sync state"
+    },
+    "/data_chunks/{chunkId}": {
+      "schema": "DataChunk",
+      "description": "Data storage chunks for lead datasets"
+    }
+  }
+}

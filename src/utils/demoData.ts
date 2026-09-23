@@ -3,56 +3,100 @@ import { RawMainRow, RawStatusRow, RawSalesRow, AdsGroup } from '../types';
 export const INITIAL_ADS_GROUPS: AdsGroup[] = [
   {
     id: 'grp-1',
-    name: 'ม่านมอเตอร์ & Smart Home',
-    color: '#3B82F6', // blue
+    name: 'บ้านคุณฟ้า (Celebrity & Review)',
+    color: '#EC4899', // Pink
     assignedAds: [
-      'Vdoม่านมอเตอร์บ้านคุณกอล์ฟ',
-      'ม่านไฟฟ้า Smart Home เชื่อม Google/Alexa',
-      'ม่านมอเตอร์ Somfy บ้านเดี่ยวหรู',
+      'บ้านคุณฟ้า',
+      'คลิปบ้านคุณฟ้า',
+      'บ้านคคุณฟ้า',
+      'รูปบ้านคุณฟ้า',
+      'VDO บ้านคุณฟ้า',
     ],
-    keywords: ['มอเตอร์', 'smart', 'ไฟฟ้า'],
+    keywords: ['ฟ้า', 'คุณฟ้า', 'บ้านคุณฟ้า'],
   },
   {
     id: 'grp-2',
-    name: 'โปรโมชั่นผ้าม่านกัน UV / มินิมอล',
-    color: '#10B981', // green
+    name: 'ม่านลดค่าไฟ & บล็อกความร้อน (Heat Block)',
+    color: '#F59E0B', // Amber
     assignedAds: [
-      'โปรโมชั่นผ้าม่านกัน UV สไตล์มินิมอล',
-      'ผ้าม่านสองชั้นกันแสง100% บ้านเดี่ยว',
-      'ม่านจีบรางเทปแถมสายรวบม่านพรีเมียม',
+      'ม่านลดค่าไฟ',
+      'บล็อกความร้อน',
+      'คลิปบล็อกความร้อน',
+      'บล็อกควมร้อน',
+      'heat block',
+      'ลดค่าไฟ',
+      'บล็อคความร้อน',
+      'ม่านบล็อคความร้อน',
+      'Heat Block',
+      'HEAT BLOCK',
     ],
-    keywords: ['uv', 'กันแสง', 'มินิมอล', 'โปรโมชั่น'],
+    keywords: ['ลดค่าไฟ', 'บล็อกความร้อน', 'heat', 'ความร้อน'],
   },
   {
     id: 'grp-3',
-    name: 'ม่านม้วน & มู่ลี่ไม้ & คอนโด',
-    color: '#8B5CF6', // purple
+    name: 'ม่านกันแสง Blackout (B/O)',
+    color: '#6366F1', // Indigo
     assignedAds: [
-      'รีวิวม่านม้วนและม่านปรับแสงคอนโดหรู',
-      'แคมเปญมู่ลี่ไม้สั่งตัดพิเศษบ้านหรู',
-      'ม่านม้วนกรองแสง Sunscreen ออฟฟิศ',
+      'ม่าน blackout',
+      'blackout',
+      'ม่านBlackout',
+      'B/O',
+      'ม่านBlakcout',
+      'ม่าน black out',
+      'ม่าน Blackout',
+      'Blackout',
     ],
-    keywords: ['ม่านม้วน', 'มู่ลี่', 'คอนโด'],
+    keywords: ['blackout', 'b/o', 'กันแสง'],
   },
   {
     id: 'grp-4',
-    name: 'วอลเปเปอร์ & งานตกแต่ง',
-    color: '#F59E0B', // amber
+    name: 'ม่านมอเตอร์ & บ้านคุณกอล์ฟ (Smart & Motor)',
+    color: '#3B82F6', // Blue
     assignedAds: [
-      'แนะนำวอลเปเปอร์นำเข้าเกาหลี',
-      'วอลเปเปอร์สั่งพิมพ์ลายธรรมชาติ',
+      'Vdoม่านมอเตอร์บ้านคุณกอล์ฟ',
+      'บ้านคุณกอล์ฟ',
+      'ม่านม้วนไฟฟ้า',
     ],
-    keywords: ['วอลเปเปอร์', 'wallpaper'],
+    keywords: ['มอเตอร์', 'กอล์ฟ', 'ไฟฟ้า'],
   },
   {
     id: 'grp-5',
-    name: 'กิจกรรม & งานแฟร์ / แคมเปญสาขา',
-    color: '#EC4899', // pink
+    name: 'Pet Friendly (สัตว์เลี้ยง)',
+    color: '#8B5CF6', // Purple
     assignedAds: [
-      'บูธงานบ้านและสวนแฟร์ เมืองทองธานี',
-      'โปรเปิดสาขาเชียงใหม่ลดพิเศษ30%',
+      'PET FRIENDLY',
+      'pet friendly',
+      'Pet friendly',
+      'Pet Friendly',
     ],
-    keywords: ['แฟร์', 'สาขา', 'บูธ'],
+    keywords: ['pet', 'สัตว์เลี้ยง', 'friendly'],
+  },
+  {
+    id: 'grp-6',
+    name: 'บ้านและสวน (Event & Fair)',
+    color: '#10B981', // Emerald
+    assignedAds: [
+      'บ้านเเละสวน',
+      'คลิปบ้านเเละสวน',
+      'คลิปบ้านและสวน',
+      'บ้านและสวน',
+    ],
+    keywords: ['บ้านและสวน', 'แฟร์'],
+  },
+  {
+    id: 'grp-7',
+    name: 'โปรโมชั่น & แคมเปญพิเศษ',
+    color: '#F97316', // Orange
+    assignedAds: [
+      'โปรฯ ครบรอบ 24 ปี',
+      'โปรลด30%',
+      'Worry Free Living',
+      'Worry Free Livi',
+      'ผ้าม่านห้องนอน Design Platony',
+      'ม่านห้องนอน Design Platony',
+      'ม่านเเบบไหนที่เหมาะกับคุณ',
+    ],
+    keywords: ['โปร', '24 ปี', 'platony', 'worry free'],
   },
 ];
 

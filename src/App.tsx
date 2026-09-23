@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Database, UploadCloud, Sparkles } from 'lucide-react';
+import { Database, UploadCloud, Sparkles, FileText } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { FilterBar } from './components/FilterBar';
 import { DashboardOverview } from './components/DashboardOverview';
@@ -27,6 +27,13 @@ import {
   loadAdsGroupsFromStorage,
   saveAdsGroupsToStorage,
 } from './utils/adsGroupStorage';
+import {
+  saveDataToCloud,
+  saveAdsGroupsToCloud,
+  updateLeadCustomerNameInCloud,
+  loadDataFromCloud,
+  subscribeToCloudUpdates,
+} from './utils/firebaseSync';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -58,10 +65,31 @@ export default function App() {
     salesFilter: 'all',
   });
 
-  // Load data from Online API on mount
+  // Load data from Firebase Cloud Firestore (and fallback to Online API) on mount
   const fetchOnlineData = useCallback(async () => {
     setIsSyncing(true);
     try {
+      // 1. Try Firebase Cloud Firestore first
+      const cloudData = await loadDataFromCloud().catch(() => null);
+
+      if (
+        cloudData &&
+        (cloudData.mainRows?.length > 0 ||
+          cloudData.statusRows?.length > 0 ||
+          cloudData.salesRows?.length > 0)
+      ) {
+        setMainRows(cloudData.mainRows || []);
+        setStatusRows(cloudData.statusRows || []);
+        setSalesRows(cloudData.salesRows || []);
+        if (cloudData.adsGroups && cloudData.adsGroups.length > 0) {
+          setAdsGroups(cloudData.adsGroups);
+          saveAdsGroupsToStorage(cloudData.adsGroups);
+        }
+        setLastUpdated(cloudData.lastUpdated || new Date().toISOString());
+        return;
+      }
+
+      // 2. If Cloud Firestore is empty, fetch from /api/data
       const res = await fetch('/api/data');
       if (res.ok) {
         const json = await res.json();
@@ -73,37 +101,33 @@ export default function App() {
             data.statusRows?.length > 0 ||
             data.salesRows?.length > 0)
         ) {
+          const finalAdsGroups =
+            data.adsGroups && data.adsGroups.length > 0
+              ? data.adsGroups
+              : loadAdsGroupsFromStorage() || INITIAL_ADS_GROUPS;
+
           setMainRows(data.mainRows || []);
           setStatusRows(data.statusRows || []);
           setSalesRows(data.salesRows || []);
-          if (data.adsGroups && data.adsGroups.length > 0) {
-            setAdsGroups(data.adsGroups);
-            saveAdsGroupsToStorage(data.adsGroups);
-          } else {
-            const local = loadAdsGroupsFromStorage();
-            if (local && local.length > 0) {
-              setAdsGroups(local);
-              fetch('/api/ads-groups', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ adsGroups: local }),
-              }).catch(() => {});
-            }
-          }
+          setAdsGroups(finalAdsGroups);
+          saveAdsGroupsToStorage(finalAdsGroups);
           setLastUpdated(data.lastUpdated);
+
+          // Seed directly into Cloud Firestore so all other devices and users can see it immediately
+          saveDataToCloud({
+            mainRows: data.mainRows || [],
+            statusRows: data.statusRows || [],
+            salesRows: data.salesRows || [],
+            adsGroups: finalAdsGroups,
+            lastUpdated: data.lastUpdated || new Date().toISOString(),
+          }).catch(() => {});
         } else {
-          // Clean state: Only use uploaded data, no sample/demo data!
           setMainRows([]);
           setStatusRows([]);
           setSalesRows([]);
           if (data?.adsGroups && data.adsGroups.length > 0) {
             setAdsGroups(data.adsGroups);
             saveAdsGroupsToStorage(data.adsGroups);
-          } else {
-            const local = loadAdsGroupsFromStorage();
-            if (local && local.length > 0) {
-              setAdsGroups(local);
-            }
           }
           setLastUpdated(data?.lastUpdated || null);
         }
@@ -117,6 +141,13 @@ export default function App() {
 
   useEffect(() => {
     fetchOnlineData();
+    // Real-time Firestore sync across all browsers, phones, and devices
+    const unsub = subscribeToCloudUpdates(() => {
+      fetchOnlineData();
+    });
+    return () => {
+      unsub();
+    };
   }, [fetchOnlineData]);
 
   // Compute joined leads
@@ -237,6 +268,12 @@ export default function App() {
     };
   }, [mainRows, statusRows, salesRows]);
 
+  const hasMostlyDefaultCustomerNames = useMemo(() => {
+    if (statusRows.length === 0) return false;
+    const defaultCount = statusRows.filter((r) => !r.customerName || r.customerName === 'ลูกค้าทั่วไป').length;
+    return defaultCount / statusRows.length > 0.5;
+  }, [statusRows]);
+
   // Handlers
   const handleUploadAndSync = async (
     newMain: RawMainRow[] | null,
@@ -244,30 +281,41 @@ export default function App() {
     newSales: RawSalesRow[] | null
   ) => {
     setIsSyncing(true);
+    const updatedMain = newMain || mainRows;
+    const updatedStatus = newStatus || statusRows;
+    const updatedSales = newSales || salesRows;
+    const nowIso = new Date().toISOString();
+
     // Instant client state update so dashboard reflects immediately
     if (newMain) setMainRows(newMain);
     if (newStatus) setStatusRows(newStatus);
     if (newSales) setSalesRows(newSales);
-    setLastUpdated(new Date().toISOString());
+    setLastUpdated(nowIso);
     setActiveTab('dashboard'); // Navigate to dashboard immediately
 
     try {
+      // 1. Sync to Firebase Cloud Firestore for real-time multi-user persistence
+      await saveDataToCloud({
+        mainRows: updatedMain,
+        statusRows: updatedStatus,
+        salesRows: updatedSales,
+        adsGroups,
+        lastUpdated: nowIso,
+      });
+
+      // 2. Also send to /api/upload as backup
       const payload: any = { adsGroups };
       if (newMain) payload.mainRows = newMain;
       if (newStatus) payload.statusRows = newStatus;
       if (newSales) payload.salesRows = newSales;
 
-      const res = await fetch('/api/upload', {
+      await fetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        console.warn('Server upload returned status', res.status, '(Client state remains active)');
-      }
+      }).catch(() => {});
     } catch (err) {
-      console.warn('Server upload sync note (Client state active in browser):', err);
+      console.warn('Server upload sync note:', err);
     } finally {
       setIsSyncing(false);
     }
@@ -280,14 +328,15 @@ export default function App() {
     saveAdsGroupsToStorage(groups);
 
     try {
-      const res = await fetch('/api/ads-groups', {
+      // 1. Save to Firebase Cloud Firestore so all users see custom ads groups
+      await saveAdsGroupsToCloud(groups);
+
+      // 2. Also send to /api/ads-groups as backup
+      await fetch('/api/ads-groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adsGroups: groups }),
-      });
-      if (!res.ok) {
-        console.warn('Server sync returned non-ok, but saved in localStorage');
-      }
+      }).catch(() => {});
     } catch (err) {
       console.error('Save ads groups error:', err);
     } finally {
@@ -295,15 +344,40 @@ export default function App() {
     }
   };
 
+  const handleUpdateCustomerName = async (leadNo: string, newCustomerName: string) => {
+    setStatusRows((prev) =>
+      prev.map((r) => (r.leadNo === leadNo ? { ...r, customerName: newCustomerName } : r))
+    );
+
+    // Save to Firestore so all connected users see the updated customer name
+    await updateLeadCustomerNameInCloud(leadNo, newCustomerName, statusRows).catch(() => {});
+
+    // Save to /api/update-lead
+    await fetch('/api/update-lead', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ leadNo, customerName: newCustomerName }),
+    }).catch(() => {});
+  };
+
   const handleClearData = async () => {
     setIsSyncing(true);
     try {
+      const nowIso = new Date().toISOString();
+      await saveDataToCloud({
+        mainRows: [],
+        statusRows: [],
+        salesRows: [],
+        adsGroups,
+        lastUpdated: nowIso,
+      }).catch(() => {});
+
       const res = await fetch('/api/clear', { method: 'POST' });
       if (res.ok) {
         setMainRows([]);
         setStatusRows([]);
         setSalesRows([]);
-        setLastUpdated(new Date().toISOString());
+        setLastUpdated(nowIso);
         setActiveTab('import'); // Bring user directly to the upload dropzones!
       }
     } catch (err) {
@@ -344,6 +418,33 @@ export default function App() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Banner informing user to re-upload File 2 (Status) to extract real Col. G customer names */}
+        {hasMostlyDefaultCustomerNames && allJoinedLeads.length > 0 && activeTab !== 'import' && (
+          <div className="mb-6 p-4 bg-indigo-50/90 border border-indigo-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-indigo-100 text-indigo-700 rounded-xl shrink-0 mt-0.5">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-indigo-950">
+                  ต้องการแสดงรายชื่อจริงของลูกค้าใช่หรือไม่?
+                </h4>
+                <p className="text-[11px] text-indigo-800 mt-0.5 leading-relaxed">
+                  เนื่องจากข้อมูลเดิมในระบบถูกนำเข้าก่อนการอัปเกรดตัวอ่าน <strong>Col. G</strong> ทำให้ยังคงแสดงคำว่า "ลูกค้าทั่วไป"<br />
+                  คุณสามารถนำ <strong>ไฟล์ที่ 2: Status</strong> มาอัปโหลดอีกครั้งในหน้าอัปโหลด ระบบจะดึงรายชื่อลูกค้าจริงจาก <strong>Col. G</strong> มาแสดงผลทันที (ข้อมูลไฟล์ Main และ Sales เดิมจะยังอยู่ครบถ้วน ไม่ต้องอัปโหลดใหม่)
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveTab('import')}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-colors shrink-0 flex items-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap"
+            >
+              <UploadCloud className="w-4 h-4" />
+              <span>คลิกเพื่ออัปโหลดไฟล์ Status</span>
+            </button>
+          </div>
+        )}
+
         {/* Empty Database Banner if 0 records */}
         {allJoinedLeads.length === 0 && activeTab !== 'import' && (
           <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center max-w-xl mx-auto shadow-xs my-8 space-y-4">
@@ -404,6 +505,7 @@ export default function App() {
             leads={filteredLeads}
             onExportExcel={handleExportExcel}
             onExportCSV={handleExportCSV}
+            onUpdateCustomerName={handleUpdateCustomerName}
           />
         )}
 

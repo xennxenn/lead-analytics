@@ -20,11 +20,17 @@ interface DataTableProps {
   leads: JoinedLead[];
   onExportExcel: () => void;
   onExportCSV: () => void;
+  onUpdateCustomerName?: (leadNo: string, newName: string) => void;
 }
 
 type SortField = 'leadNo' | 'createdDateStr' | 'customerName' | 'status' | 'totalSales' | 'branch' | 'staff' | 'extractedAds';
 
-export const DataTable: React.FC<DataTableProps> = ({ leads, onExportExcel, onExportCSV }) => {
+export const DataTable: React.FC<DataTableProps> = ({
+  leads,
+  onExportExcel,
+  onExportCSV,
+  onUpdateCustomerName,
+}) => {
   const [sortField, setSortField] = useState<SortField>('leadNo');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -413,7 +419,16 @@ export const DataTable: React.FC<DataTableProps> = ({ leads, onExportExcel, onEx
 
       {/* Detail Modal */}
       {selectedLead && (
-        <LeadDetailModal lead={selectedLead} onClose={() => setSelectedLead(null)} />
+        <LeadDetailModal
+          lead={selectedLead}
+          onClose={() => setSelectedLead(null)}
+          onUpdateCustomerName={(leadNo, newName) => {
+            setSelectedLead((prev) => (prev ? { ...prev, customerName: newName } : null));
+            if (onUpdateCustomerName) {
+              onUpdateCustomerName(leadNo, newName);
+            }
+          }}
+        />
       )}
     </div>
   );

@@ -109,6 +109,11 @@ app.get(['/api/health', '/health'], (req, res) => {
 });
 
 app.get(['/api/data', '/data'], (req, res) => {
+  try {
+    currentStore = loadStoredData();
+  } catch (err) {
+    console.warn('Error reading stored data:', err);
+  }
   res.json({
     success: true,
     data: currentStore,
@@ -153,6 +158,25 @@ app.post(['/api/ads-groups', '/ads-groups'], (req, res) => {
       saveStoredData(currentStore);
     }
     res.json({ success: true, adsGroups: currentStore.adsGroups });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post(['/api/update-lead', '/update-lead'], (req, res) => {
+  try {
+    const { leadNo, customerName } = req.body;
+    if (leadNo && customerName) {
+      currentStore.statusRows = currentStore.statusRows.map((r: any) => {
+        if (r.leadNo === leadNo) {
+          return { ...r, customerName };
+        }
+        return r;
+      });
+      currentStore.lastUpdated = new Date().toISOString();
+      saveStoredData(currentStore);
+    }
+    res.json({ success: true, message: 'อัปเดตข้อมูลลูกค้าเรียบร้อยแล้ว' });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }

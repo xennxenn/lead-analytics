@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   User,
@@ -14,16 +14,39 @@ import {
   Clock,
   Sparkles,
   Tag,
+  Edit2,
+  Check,
 } from 'lucide-react';
 import { JoinedLead } from '../types';
 
 interface LeadDetailModalProps {
   lead: JoinedLead | null;
   onClose: () => void;
+  onUpdateCustomerName?: (leadNo: string, newName: string) => void;
 }
 
-export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({ lead, onClose }) => {
+export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
+  lead,
+  onClose,
+  onUpdateCustomerName,
+}) => {
   if (!lead) return null;
+
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(lead.customerName);
+
+  useEffect(() => {
+    setEditedName(lead.customerName);
+    setIsEditingName(false);
+  }, [lead.customerName, lead.leadNo]);
+
+  const handleSaveName = () => {
+    const trimmed = editedName.trim();
+    if (trimmed && onUpdateCustomerName) {
+      onUpdateCustomerName(lead.leadNo, trimmed);
+    }
+    setIsEditingName(false);
+  };
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('th-TH', {
@@ -101,8 +124,55 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({ lead, onClose 
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <span className="text-slate-400 block text-[11px]">ชื่อลูกค้า</span>
-                <span className="font-semibold text-slate-800 text-sm">{lead.customerName}</span>
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-slate-400 block text-[11px]">ชื่อลูกค้า</span>
+                  {!isEditingName && onUpdateCustomerName && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingName(true)}
+                      className="text-blue-600 hover:text-blue-700 text-[11px] font-medium flex items-center gap-1 cursor-pointer transition-colors"
+                      title="แก้ไขชื่อลูกค้า"
+                    >
+                      <Edit2 className="w-3 h-3" /> แก้ไขชื่อ
+                    </button>
+                  )}
+                </div>
+                {isEditingName ? (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <input
+                      type="text"
+                      value={editedName}
+                      onChange={(e) => setEditedName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveName();
+                        if (e.key === 'Escape') setIsEditingName(false);
+                      }}
+                      autoFocus
+                      className="px-2 py-1 text-sm font-semibold border border-blue-400 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white w-full"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveName}
+                      className="p-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg cursor-pointer shrink-0 transition-colors shadow-2xs"
+                      title="บันทึก"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditedName(lead.customerName);
+                        setIsEditingName(false);
+                      }}
+                      className="p-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg cursor-pointer shrink-0 transition-colors"
+                      title="ยกเลิก"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <span className="font-semibold text-slate-800 text-sm">{lead.customerName}</span>
+                )}
               </div>
               <div>
                 <span className="text-slate-400 block text-[11px]">เบอร์ติดต่อ</span>

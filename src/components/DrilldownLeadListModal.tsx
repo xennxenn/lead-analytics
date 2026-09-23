@@ -19,6 +19,7 @@ interface DrilldownLeadListModalProps {
   subtitle?: string;
   leads: JoinedLead[];
   onClose: () => void;
+  onUpdateCustomerName?: (leadNo: string, newName: string) => void;
 }
 
 export const DrilldownLeadListModal: React.FC<DrilldownLeadListModalProps> = ({
@@ -26,6 +27,7 @@ export const DrilldownLeadListModal: React.FC<DrilldownLeadListModalProps> = ({
   subtitle,
   leads,
   onClose,
+  onUpdateCustomerName,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLead, setSelectedLead] = useState<JoinedLead | null>(null);
@@ -150,6 +152,17 @@ export const DrilldownLeadListModal: React.FC<DrilldownLeadListModalProps> = ({
               <span className="text-base font-bold text-emerald-700 font-mono">{formatCurrency(totalSales)}</span>
             </div>
           </div>
+
+          {paginatedLeads.some((l) => l.customerName === 'ลูกค้าทั่วไป') && (
+            <div className="mx-6 mb-3 p-3 bg-blue-50/80 border border-blue-200/90 rounded-xl flex items-center justify-between text-xs text-blue-950 gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">💡</span>
+                <span className="text-[11px] leading-relaxed">
+                  <strong>ต้องการให้แสดงรายชื่อจริงของลูกค้า:</strong> ระบบอัปเกรดตัวอ่าน <strong>Col. G</strong> พร้อมแล้ว สามารถไปที่แท็บ <strong>"นำเข้า / อัปโหลดไฟล์"</strong> แล้วอัปโหลดเฉพาะ <strong>ไฟล์ที่ 2 (Status)</strong> เพื่ออัปเดตชื่อลูกค้าจริงเข้าสู่ระบบได้ทันที (ไฟล์ Main และ Sales เดิมยังอยู่ครบ ไม่ต้องอัปโหลดใหม่)
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Search and Action Bar */}
           <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white">
@@ -324,7 +337,16 @@ export const DrilldownLeadListModal: React.FC<DrilldownLeadListModalProps> = ({
 
       {/* Double-click Lead Detail Modal */}
       {selectedLead && (
-        <LeadDetailModal lead={selectedLead} onClose={() => setSelectedLead(null)} />
+        <LeadDetailModal
+          lead={selectedLead}
+          onClose={() => setSelectedLead(null)}
+          onUpdateCustomerName={(leadNo, newName) => {
+            setSelectedLead((prev) => (prev ? { ...prev, customerName: newName } : null));
+            if (onUpdateCustomerName) {
+              onUpdateCustomerName(leadNo, newName);
+            }
+          }}
+        />
       )}
     </>
   );

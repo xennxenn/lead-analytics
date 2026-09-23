@@ -606,13 +606,13 @@ export const DataImportExport: React.FC<DataImportExportProps> = ({
 
             <div className="p-2.5 bg-indigo-50/60 rounded-lg text-[11px] text-slate-600 mb-3 space-y-1">
               <p>
-                <strong>Col. B:</strong> สถานะ Lead &nbsp;|&nbsp; <strong>Col. C:</strong> รหัสลูกค้า
+                <strong>Col. B:</strong> สถานะ Lead &nbsp;|&nbsp; <strong>Col. C:</strong> รหัสลูกค้า (Lead No)
               </p>
               <p>
-                <strong>Col. G, H:</strong> ชื่อ, เบอร์ &nbsp;|&nbsp; <strong>Col. M, O:</strong> แหล่งที่มา, หน้างาน
+                <strong className="text-indigo-700">Col. G:</strong> <span className="font-semibold text-indigo-900">ชื่อลูกค้า</span> &nbsp;|&nbsp; <strong>Col. H:</strong> เบอร์โทรศัพท์
               </p>
               <p>
-                <strong>Col. P, V, Y, Z:</strong> พนักงาน, สาขา, อำเภอ, จังหวัด
+                <strong>Col. M, O:</strong> แหล่งที่มา, หน้างาน &nbsp;|&nbsp; <strong>Col. P, V, Y, Z:</strong> พนักงาน, สาขา, อำเภอ, จังหวัด
               </p>
             </div>
 

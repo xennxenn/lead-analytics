@@ -493,7 +493,7 @@ export function parseMainContent(input: string | string[][]): RawMainRow[] {
 
 // ----------------------------------------------------
 // 2. FILE 2: STATUS
-// Col B (1): Status, Col C (2): Lead No, Col G (6): Name, Col H (7): Phone
+// Col B (1): Status, Col C (2): Lead No, Col G (6): Customer Name, Col H (7): Phone
 // Col M (12): Source, Col O (14): Job Type, Col P (15): Staff
 // Col V (21): Branch, Col Y (24): District, Col Z (25): Province
 // ----------------------------------------------------
@@ -501,16 +501,16 @@ export function parseStatusContent(input: string | string[][]): RawStatusRow[] {
   const rows = toMatrix(input);
   if (rows.length === 0) return [];
 
-  let statusCol = 1;
-  let leadCol = 2;
-  let nameCol = 6;
-  let phoneCol = 7;
-  let sourceCol = 12;
-  let jobCol = 14;
-  let staffCol = 15;
-  let branchCol = 21;
-  let distCol = 24;
-  let provCol = 25;
+  let statusCol = 1; // Col B
+  let leadCol = 2;   // Col C
+  let nameCol = 6;   // Col G (Column G is explicitly the Customer Name column)
+  let phoneCol = 7;  // Col H
+  let sourceCol = 12;// Col M
+  let jobCol = 14;   // Col O
+  let staffCol = 15; // Col P
+  let branchCol = 21;// Col V
+  let distCol = 24;  // Col Y
+  let provCol = 25;  // Col Z
   let startIndex = 0;
 
   // Search top 10 rows for header
@@ -536,7 +536,22 @@ export function parseStatusContent(input: string | string[][]): RawStatusRow[] {
         c === 'รหัส'
       ) {
         leadCol = idx;
-      } else if (c.includes('name') || c.includes('ชื่อลูกค้า') || c.includes('ชื่อ-สกุล') || c.includes('ชื่อ')) {
+      } else if (
+        c.includes('name') ||
+        c.includes('ชื่อลูกค้า') ||
+        c.includes('ชื่อ-สกุล') ||
+        c.includes('ชื่อ-นามสกุล') ||
+        c.includes('ชื่อ นามสกุล') ||
+        c.includes('ชื่อสกุล') ||
+        c.includes('ชื่อผู้ติดต่อ') ||
+        c.includes('ผู้ติดต่อ') ||
+        c.includes('contact') ||
+        (c.includes('ลูกค้า') && !c.includes('รหัส') && !c.includes('id') && !c.includes('no') && !c.includes('code')) ||
+        (c.includes('customer') && !c.includes('id') && !c.includes('no') && !c.includes('code')) ||
+        c.includes('ผู้สนใจ') ||
+        c.includes('client') ||
+        c === 'ชื่อ'
+      ) {
         nameCol = idx;
       } else if (c.includes('phone') || c.includes('tel') || c.includes('mobile') || c.includes('เบอร์') || c.includes('โทร')) {
         phoneCol = idx;
@@ -563,8 +578,15 @@ export function parseStatusContent(input: string | string[][]): RawStatusRow[] {
         const c = String(col || '').trim().toLowerCase();
         if (c.includes('status') || c.includes('สถานะ')) statusCol = idx;
         else if (c.includes('lead') || c.includes('รหัส')) leadCol = idx;
-        else if (c.includes('name') || c.includes('ชื่อ')) nameCol = idx;
-        else if (c.includes('phone') || c.includes('tel') || c.includes('เบอร์') || c.includes('โทร')) phoneCol = idx;
+        else if (
+          c.includes('name') ||
+          c.includes('ชื่อ') ||
+          (c.includes('ลูกค้า') && !c.includes('รหัส')) ||
+          c.includes('ผู้ติดต่อ') ||
+          c.includes('customer')
+        ) {
+          nameCol = idx;
+        } else if (c.includes('phone') || c.includes('tel') || c.includes('เบอร์') || c.includes('โทร')) phoneCol = idx;
         else if (c.includes('source') || c.includes('ที่มา') || c.includes('ช่องทาง')) sourceCol = idx;
         else if (c.includes('job') || c.includes('ประเภท')) jobCol = idx;
         else if (c.includes('staff') || c.includes('พนักงาน') || c.includes('ผู้ดูแล')) staffCol = idx;
@@ -597,10 +619,25 @@ export function parseStatusContent(input: string | string[][]): RawStatusRow[] {
 
     if (!leadNo) continue;
 
+    // 2. Extract Customer Name from Col. G (index 6) as confirmed by user
+    let customerName = '';
+    if (row[nameCol] !== undefined && row[nameCol] !== null) {
+      customerName = String(row[nameCol]).trim();
+    }
+    // If nameCol was something else and yielded empty, check Col G (index 6) directly
+    if ((!customerName || customerName === '-') && row[6] !== undefined && row[6] !== null) {
+      customerName = String(row[6]).trim();
+    }
+
+    // If still empty or just a dash, set to 'ลูกค้าทั่วไป' (do NOT invent fake names)
+    if (!customerName || customerName === '-') {
+      customerName = 'ลูกค้าทั่วไป';
+    }
+
     result.push({
       status: String(row[statusCol] || '').trim() || 'ไม่ระบุสถานะ',
       leadNo,
-      customerName: String(row[nameCol] || '').trim() || 'ลูกค้าทั่วไป',
+      customerName,
       phone: String(row[phoneCol] || '').trim() || '-',
       source: String(row[sourceCol] || '').trim() || 'ไม่ระบุแหล่งที่มา',
       jobType: String(row[jobCol] || '').trim() || 'ไม่ระบุประเภท',
@@ -926,6 +963,13 @@ export function joinDatasets(
     // Clean salesTransactions array
     const salesTransactions: SalesTransaction[] = salesTxWithMeta.map(({ _ts, _isValid, ...rest }) => rest);
 
+    const resolvedCustomerName =
+      statusRow.customerName &&
+      statusRow.customerName !== '-' &&
+      statusRow.customerName.trim().length > 0
+        ? statusRow.customerName.trim()
+        : 'ลูกค้าทั่วไป';
+
     joinedList.push({
       id: rawLead,
       leadNo: rawLead,
@@ -935,7 +979,7 @@ export function joinDatasets(
       createdDateStr: dateInfo.dateStr,
       createdDateFormattedThai: dateInfo.formattedThai,
       status: statusRow.status || 'ไม่ระบุสถานะ',
-      customerName: statusRow.customerName || 'ลูกค้าทั่วไป',
+      customerName: resolvedCustomerName,
       phone: statusRow.phone || '-',
       source: statusRow.source || 'ไม่ระบุแหล่งที่มา',
       jobType: statusRow.jobType || 'ไม่ระบุประเภท',
